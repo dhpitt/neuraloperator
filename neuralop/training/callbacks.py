@@ -477,9 +477,9 @@ class CheckpointCallback(Callback):
                 self.save_dir,
                 model_name,
                 model=self.state_dict["model"],
-                optimizer=self.state_dict.get("optimizer", None),
-                regularizer=self.state_dict.get("regularizer", None),
-                scheduler=self.state_dict.get("scheduler", None),
+                optimizer=self.state_dict.get("optimizer", None) if self.save_optimizer else None,
+                regularizer=self.state_dict.get("regularizer", None) if self.save_regularizer else None,
+                scheduler=self.state_dict.get("scheduler", None) if self.save_scheduler else None,
             )
 
             if self.state_dict["verbose"]:
