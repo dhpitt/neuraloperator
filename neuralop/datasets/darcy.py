@@ -202,3 +202,89 @@ def load_darcy_pt(
         positional_encoding=pos_encoding
     )
     return train_loader, test_loaders, data_processor
+
+
+def load_darcy_421_5k(data_path, 
+                        n_train, n_test,
+                        batch_size, test_batch_size,
+                        sub=1,
+                        grid_boundaries=[[0,1],[0,1]],
+                        positional_encoding=True,
+                        encode_input=False,
+                        encode_output=True,
+                        encoding='channel-wise', 
+                        channel_dim=1):
+    """
+    Dataloader for Nik's 421 5K darcy dataset
+
+    data is saved as a torch .pt archive
+    """
+
+    data = torch.load(data_path)
+    a = data['x']
+    u = data['y']
+
+    x_train = a[0:n_train, ::sub, ::sub].unsqueeze(channel_dim)
+    y_train = u[0:n_train, ::sub, ::sub].unsqueeze(channel_dim)
+
+    if n_test > 0:
+        x_test = a[n_train:n_train+n_test, ::sub, ::sub].unsqueeze(channel_dim)
+        y_test = u[n_train:n_train+n_test, ::sub, ::sub].unsqueeze(channel_dim)
+    del data
+
+    train_resolution = x_train.shape[-1]
+
+    # this part is the same as in load_darcy_pt
+    if encode_input:
+        if encoding == "channel-wise":
+            reduce_dims = list(range(x_train.ndim))
+        elif encoding == "pixel-wise":
+            reduce_dims = [0]
+
+        input_encoder = UnitGaussianNormalizer(dim=reduce_dims)
+        input_encoder.fit(x_train)
+        #x_train = input_encoder.transform(x_train)
+        #x_test = input_encoder.transform(x_test.contiguous())
+    else:
+        input_encoder = None
+
+    if encode_output:
+        if encoding == "channel-wise":
+            reduce_dims = list(range(y_train.ndim))
+        elif encoding == "pixel-wise":
+            reduce_dims = [0]
+
+        output_encoder = UnitGaussianNormalizer(dim=reduce_dims)
+        output_encoder.fit(y_train)
+        #y_train = output_encoder.transform(y_train)
+    else:
+        output_encoder = None
+
+    if positional_encoding:
+        pos_enc = PositionalEmbedding2D(grid_boundaries)
+    else:
+        pos_enc = None
+
+    data_proc = DefaultDataProcessor(in_normalizer=input_encoder, out_normalizer=output_encoder, positional_encoding=pos_enc)
+    
+    train_db = TensorDataset(x_train, y_train)
+    train_loader = torch.utils.data.DataLoader(
+        train_db,
+        batch_size=batch_size, 
+        # shuffle=True,
+        shuffle=False,
+        num_workers=0, 
+        pin_memory=True, 
+        persistent_workers=False
+    )
+
+    if n_test > 0:
+        test_db = TensorDataset(x_test, y_test)
+        test_loader = torch.utils.data.DataLoader(test_db,
+                                                batch_size=test_batch_size, shuffle=False,
+                                                num_workers=0, pin_memory=True, persistent_workers=False)
+        test_loaders =  {train_resolution: test_loader}
+    else: 
+        test_loaders = None
+
+    return train_loader, train_db, test_loaders, data_proc
