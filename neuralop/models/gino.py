@@ -5,10 +5,10 @@ import time
 
 from torch import nn
 
-from .fno import FNO
 
 from ..layers.channel_mlp import ChannelMLP
 from ..layers.embeddings import SinusoidalEmbedding2D
+from ..layers.fno_block import FNOBlocks
 from ..layers.spectral_convolution import SpectralConv
 from ..layers.integral_transform import IntegralTransform
 from ..layers.neighbor_search import NeighborSearch
@@ -18,6 +18,8 @@ class GINO(nn.Module):
 
         Parameters
         ----------
+        Core parameters
+        ~~~~~~~~~~~~~~~~
         in_channels : int
             feature dimension of input points
         out_channels : int
@@ -26,6 +28,9 @@ class GINO(nn.Module):
             number of channels in FNO pointwise projection
         gno_coord_dim : int, optional
             geometric dimension of input/output queries, by default 3
+
+        GNO encoder parameters
+        ~~~~~~~~~~~~~~~~~~~~~~~
         gno_coord_embed_dim : int, optional
             dimension of positional embedding for gno coordinates, by default None
         gno_embed_max_positions : int, optional
@@ -53,6 +58,10 @@ class GINO(nn.Module):
             If False, uses the fallback PyTorch version.
         out_gno_tanh : bool, optional
             whether to use tanh to stabilize outputs of the output GNO, by default False
+
+        Latent convolution parameters
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
         fno_in_channels : int, optional
             number of input channels for FNO, by default 26
         fno_n_modes : tuple, optional
@@ -119,7 +128,7 @@ class GINO(nn.Module):
             How to perform domain padding.
         fno_fft_norm : str, defaults to 'forward'
             normalization parameter of torch.fft to use in FNO. Defaults to 'forward'
-        fno_SpectralConv : nn.Module, defaults to SpectralConv
+        fno_conv_module : nn.Module, defaults to SpectralConv
             Spectral Convolution module to use.
         """
     def __init__(
@@ -169,7 +178,7 @@ class GINO(nn.Module):
             fno_domain_padding=None,
             fno_domain_padding_mode='one-sided',
             fno_fft_norm='forward',
-            fno_SpectralConv=SpectralConv,
+            fno_conv_module=SpectralConv,
             **kwargs
         ):
         
@@ -207,7 +216,7 @@ class GINO(nn.Module):
             self.adain_pos_embed = None
             self.ada_in_dim = None
         
-        self.fno = FNO(
+        self.fno_blocks = FNOBlocks(
                 n_modes=fno_n_modes,
                 hidden_channels=fno_hidden_channels,
                 in_channels=fno_in_channels,
@@ -220,7 +229,8 @@ class GINO(nn.Module):
                 incremental_n_modes=fno_incremental_n_modes,
                 fno_block_precision=fno_block_precision,
                 use_channel_mlp=fno_use_channel_mlp,
-                ChannelMLP={"expansion": fno_channel_mlp_expansion, "dropout": fno_channel_mlp_dropout},
+                channel_mlp_expansion=fno_channel_mlp_expansion,
+                channel_mlp_dropout=fno_channel_mlp_dropout,
                 non_linearity=fno_non_linearity,
                 stabilizer=fno_stabilizer, 
                 norm=fno_norm,
@@ -238,10 +248,9 @@ class GINO(nn.Module):
                 domain_padding=fno_domain_padding,
                 domain_padding_mode=fno_domain_padding_mode,
                 fft_norm=fno_fft_norm,
-                SpectralConv=fno_SpectralConv,
+                conv_module=fno_conv_module,
                 **kwargs
         )
-        del self.fno.projection
 
         self.nb_search_out = NeighborSearch(use_open3d=gno_use_open3d)
         self.gno_radius = gno_radius
@@ -311,17 +320,10 @@ class GINO(nn.Module):
             else:
                 ada_in_embed = ada_in
 
-            self.fno.fno_blocks.set_ada_in_embeddings(ada_in_embed)
+            self.fno_blocks.set_ada_in_embeddings(ada_in_embed)
 
         #Apply FNO blocks
-        in_p = self.fno.lifting(in_p)
-        if self.fno.domain_padding is not None:
-            in_p = self.fno.domain_padding.pad(in_p)
-        for layer_idx in range(self.fno.n_layers):
-            in_p = self.fno.fno_blocks(in_p, layer_idx)
-
-        if self.fno.domain_padding is not None:
-            in_p = self.fno.domain_padding.unpad(in_p)
+        in_p = self.fno.fno_blocks(in_p)
         return in_p 
 
     def integrate_latent(self, in_p, out_p, latent_embed):
