@@ -10,12 +10,13 @@ Primer on operator learning
 To get a better feel for the theory behind our neural operator models, see :ref:`neuralop_intro`. 
 Once you're comfortable with the concept of operator learning, check out specific details of our
 Fourier Neural Operator (FNO) in :ref:`fno_intro`. 
+
 ~~~~~~~~~~~~
 
 Training utilities
 -------------------
-To learn more about the model training
-utilities we provide, check out :ref:`training_nos`.
+To learn more about the model training utilities we provide, check out :ref:`training_nos`.
+
 ~~~~~~~~~~~~
 
 Interactive examples with code
