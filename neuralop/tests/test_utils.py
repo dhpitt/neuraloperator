@@ -1,5 +1,6 @@
 from ..utils import get_wandb_api_key, wandb_login
 from ..utils import count_model_params, count_tensor_params
+from ..utils import validate_scaling_factor
 from pathlib import Path
 import pytest
 
@@ -61,8 +62,6 @@ def test_count_tensor_params():
     n_params = count_tensor_params(x, dims=[1, 3])
     assert n_params ==  3*5 * 2
 
-
-
 def test_get_wandb_api_key():
     # Make sure no env var key set
     os.environ.pop("WANDB_API_KEY", None)
@@ -113,6 +112,9 @@ def test_ArgparseConfig(monkeypatch):
         with pytest.raises(ValueError):
             wandb_login()
 
+##############################################
+# Dummy classes for general testing purposes #
+##############################################
 class DummyDataset(Dataset):
     # Simple linear regression problem, PyTorch style
 
