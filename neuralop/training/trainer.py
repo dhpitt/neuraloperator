@@ -24,7 +24,27 @@ from .training_state import load_training_state, save_training_state
 
 class Trainer:
     """
-    A general Trainer class to train neural-operators on given datasets
+    A general Trainer class to train neural-operators on given datasets.
+
+    Parameters
+    ----------
+    model : nn.Module
+    n_epochs : int
+    wandb_log : bool, default is False
+        whether to log results to wandb
+    device : torch.device, or str 'cpu' or 'cuda'
+    mixed_precision : bool, default is False
+        whether to use torch.autocast to compute mixed precision
+    data_processor : DataProcessor class to transform data, default is None
+        if not None, data from the loaders is transform first with data_processor.preprocess,
+        then after getting an output from the model, that is transformed with data_processor.postprocess.
+    eval_interval : int, default is 1
+        how frequently to evaluate model and log training stats
+    log_output : bool, default is False
+        if True, and if wandb_log is also True, log output images to wandb
+    use_distributed : bool, default is False
+        whether to use DDP
+    verbose : bool, default is False
     """
     def __init__(
         self,
@@ -40,27 +60,6 @@ class Trainer:
         use_distributed: bool=False,
         verbose: bool=False,
     ):
-        """
-        Parameters
-        ----------
-        model : nn.Module
-        n_epochs : int
-        wandb_log : bool, default is False
-            whether to log results to wandb
-        device : torch.device, or str 'cpu' or 'cuda'
-        mixed_precision : bool, default is False
-            whether to use torch.autocast to compute mixed precision
-        data_processor : DataProcessor class to transform data, default is None
-            if not None, data from the loaders is transform first with data_processor.preprocess,
-            then after getting an output from the model, that is transformed with data_processor.postprocess.
-        eval_interval : int, default is 1
-            how frequently to evaluate model and log training stats
-        log_output : bool, default is False
-            if True, and if wandb_log is also True, log output images to wandb
-        use_distributed : bool, default is False
-            whether to use DDP
-        verbose : bool, default is False
-        """
 
         self.model = model
         self.n_epochs = n_epochs
