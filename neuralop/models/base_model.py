@@ -115,7 +115,6 @@ class BaseModel(torch.nn.Module):
                 kwargs[key] = param.default
                 if verbose:
                     print(f"Keyword argument {key} not specified for class {class_name},  using default={param.default}.")
-
         return metadata
 
     def state_dict(self, destination: dict=None, prefix: str='', keep_vars: bool=False):
@@ -199,9 +198,7 @@ class BaseModel(torch.nn.Module):
         if version is not None and hasattr(cls, '_version') and version != cls._version:
             warnings.warn(f'Checkpoint saved for version {version} of class {cls.__name__} but current code is version {cls._version}')
 
-        #metadata = metadata_to_base_models(metadata)
-
-        print(f"updated metadata={metadata}")
+        metadata = metadata_to_base_models(metadata)
 
         init_args = metadata.get('_args', list())
         init_kwargs = metadata.get('_kwargs', dict())
@@ -258,3 +255,4 @@ def get_model(config):
         return BaseModel._models[arch](**config_arch)
     except KeyError:
         raise ValueError(f"Got config.arch={arch}, expected one of {available_models()}.")
+   
